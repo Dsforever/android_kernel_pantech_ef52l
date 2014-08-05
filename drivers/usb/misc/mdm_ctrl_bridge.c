@@ -351,6 +351,9 @@ void ctrl_bridge_close(unsigned int id)
 	dev_dbg(&dev->intf->dev, "%s:\n", __func__);
 
 	ctrl_bridge_set_cbits(dev->brdg->ch_id, 0);
+//(+)12/11/08 p10919 : mdm remotefs hello fail fix by case 01013984
+	usb_wait_anchor_empty_timeout(&dev->tx_submitted,500); 
+//(+)12/11/08 p10919
 
 	dev->brdg = NULL;
 }

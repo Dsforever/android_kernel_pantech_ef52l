@@ -45,6 +45,9 @@
 #include "acpuclock-krait.h"
 #include "avs.h"
 
+
+#define FEATURE_GET_BOARD_REVISION	// added by dscheon. For getting board revision.
+
 /* MUX source selects. */
 #define PRI_SRC_SEL_SEC_SRC	0
 #define PRI_SRC_SEL_HFPLL	1
@@ -1063,6 +1066,51 @@ static void krait_apply_vmin(struct acpu_level *tbl)
 		tbl->avsdscr_setting = 0;
 	}
 }
+#ifdef FEATURE_GET_BOARD_REVISION
+static u32 get_apq_board_revision(void)
+{
+	void __iomem *qfprom_base;
+	u32 apq_revision, pte_efuse = 0;
+
+	qfprom_base = ioremap(0x007060e0, SZ_256);
+
+	if (qfprom_base)
+	{
+		pte_efuse = readl_relaxed(qfprom_base + 0);
+		apq_revision = (pte_efuse >> 12) & 0xFFFFF;
+	}
+	else
+	{
+		apq_revision = 0;
+	}
+
+	iounmap(qfprom_base);
+
+	return apq_revision;
+}
+
+static u32 get_apq_OEM_ID(void)
+{
+	void __iomem *qfprom_base;
+	u32 apq_revision, pte_efuse = 0;
+
+	qfprom_base = ioremap(0x007060e4, SZ_256);
+
+	if (qfprom_base)
+	{
+		pte_efuse = readl_relaxed(qfprom_base + 0);
+	}
+	else
+	{
+		apq_revision = 0;
+	}
+
+	iounmap(qfprom_base);
+
+	return pte_efuse;
+}
+
+#endif	// #ifdef FEATURE_GET_BOARD_REVISION
 
 static int __init get_speed_bin(u32 pte_efuse)
 {
@@ -1097,6 +1145,44 @@ static int __init get_pvs_bin(u32 pte_efuse)
 		dev_info(drv.dev, "ACPU PVS: %d\n", pvs_bin);
 	}
 
+#ifdef FEATURE_GET_BOARD_REVISION
+	if(cpu_is_apq8064())
+	{
+		u32 board_revsion = 0;
+		u32 OemID = 0;
+		
+		board_revsion = get_apq_board_revision();
+		dev_info(drv.dev, "CPU revision is 0x%x \n",board_revsion);			
+
+
+		OemID = get_apq_OEM_ID();
+		dev_info(drv.dev, "OEM ID is 0x%x \n",OemID);
+#if (0)
+		if (board_revsion == 0x7)
+		{
+			strcat(acpupvs, " v3.2.1");
+		}
+		else if (board_revsion > 0x7)
+		{
+			strcat(acpupvs, " over_v3.2.1");
+		}
+		else if (board_revsion == 0x4)
+		{
+			strcat(acpupvs, " v3.1");
+		}
+		else if (board_revsion < 0x4)
+		{
+			strcat(acpupvs, " under_v3.1");
+		}
+		else
+		{
+			strcat(acpupvs, " undef ver");
+		}
+#endif		
+	}
+	else
+		dev_info(drv.dev, "CPU is not APQ8064 \n");		
+#endif	// #ifdef FEATURE_GET_BOARD_REVISION
 	return pvs_bin;
 }
 

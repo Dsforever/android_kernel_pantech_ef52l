@@ -57,6 +57,10 @@
 #define MSM_FB_NUM	3
 #endif
 
+#ifdef CONFIG_PANTECH_LCD_GET_LCD_REV
+int mipi_renesas_fhd_manufature_ID_get(void);
+#endif
+
 static unsigned char *fbram;
 static unsigned char *fbram_phys;
 static int fbram_size;
@@ -211,7 +215,7 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 
 static struct led_classdev backlight_led = {
 	.name		= "lcd-backlight",
-	.brightness	= MAX_BACKLIGHT_BRIGHTNESS,
+	.brightness	= MAX_BACKLIGHT_BRIGHTNESS/2,
 	.brightness_set	= msm_fb_set_bl_brightness,
 };
 #endif
@@ -630,8 +634,10 @@ static int msm_fb_probe(struct platform_device *pdev)
 	if (!lcd_backlight_registered) {
 		if (led_classdev_register(&pdev->dev, &backlight_led))
 			printk(KERN_ERR "led_classdev_register failed\n");
-		else
+        else {
+            msm_fb_set_bl_brightness(&backlight_led, backlight_led.brightness);
 			lcd_backlight_registered = 1;
+        }
 	}
 #endif
 
@@ -1804,9 +1810,17 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
 
 #ifdef CONFIG_FB_MSM_LOGO
+	if (mfd->panel_info.type == MIPI_VIDEO_PANEL ||
+			mfd->panel_info.type == MIPI_CMD_PANEL){
+		memset((void *)fbi->screen_base, 0x00, fbi->fix.smem_len);		
+		msm_fb_open(mfd->fbi, 0);
+		down(&mfd->sem);
+		msm_fb_set_backlight(mfd, 0);
+		up(&mfd->sem);
 	/* Flip buffer */
 	if (!load_565rle_image(INIT_IMAGE_FILE, bf_supported))
 		;
+	}
 #endif
 	ret = 0;
 
@@ -4381,6 +4395,12 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 				sizeof(mdp_metadata));
 
 		break;
+
+#ifdef CONFIG_PANTECH_LCD_GET_LCD_REV
+    case MSMFB_PANTECH_LCD_GET_LCD_REV:
+        ret = mipi_renesas_fhd_manufature_ID_get();
+        break;
+#endif
 
 	default:
 		MSM_FB_INFO("MDP: unknown ioctl (cmd=%x) received!\n", cmd);

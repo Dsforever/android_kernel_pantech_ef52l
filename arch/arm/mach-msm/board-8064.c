@@ -1661,8 +1661,10 @@ static struct i2c_board_info cs8427_device_info[] __initdata = {
 	},
 };
 
+
 #ifndef CONFIG_PN544
-#define HAP_SHIFT_LVL_OE_GPIO		PM8921_MPP_PM_TO_SYS(8)
+//#define HAP_SHIFT_LVL_OE_GPIO		PM8921_MPP_PM_TO_SYS(8)
+#define HAP_SHIFT_LVL_OE_GPIO 
 #define ISA1200_HAP_EN_GPIO		PM8921_GPIO_PM_TO_SYS(33)
 #define ISA1200_HAP_LEN_GPIO		PM8921_GPIO_PM_TO_SYS(20)
 #define ISA1200_HAP_CLK_PM8921		PM8921_GPIO_PM_TO_SYS(44)
@@ -1877,7 +1879,7 @@ static struct i2c_board_info mxt_device_info[] __initdata = {
 };
 #define CYTTSP_TS_GPIO_IRQ		6
 #define CYTTSP_TS_GPIO_SLEEP		33
-#define CYTTSP_TS_GPIO_SLEEP_ALT	12
+//#define CYTTSP_TS_GPIO_SLEEP_ALT	12
 
 static ssize_t tma340_vkeys_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
@@ -2844,16 +2846,14 @@ static struct platform_device apq8064_device_ext_mpp8_vreg __devinitdata = {
 	},
 };
 
-#ifndef CONFIG_PANTECH_BLOCK
-static struct platform_device apq8064_device_ext_3p3v_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= APQ8064_EXT_3P3V_REG_EN_GPIO,
-	.dev	= {
-		.platform_data =
-			&apq8064_gpio_regulator_pdata[GPIO_VREG_ID_EXT_3P3V],
-	},
-};
-#endif
+//static struct platform_device apq8064_device_ext_3p3v_vreg __devinitdata = {
+//	.name	= GPIO_REGULATOR_DEV_NAME,
+//	.id	= APQ8064_EXT_3P3V_REG_EN_GPIO,
+//	.dev	= {
+//		.platform_data =
+//			&apq8064_gpio_regulator_pdata[GPIO_VREG_ID_EXT_3P3V],
+//	},
+//};
 
 static struct platform_device apq8064_device_ext_ts_sw_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
@@ -2913,18 +2913,14 @@ static struct platform_device *early_common_devices[] __initdata = {
 static struct platform_device *pm8921_common_devices[] __initdata = {
 	&apq8064_device_ext_5v_vreg,
 	&apq8064_device_ext_mpp8_vreg,
-#ifndef CONFIG_PANTECH_BLOCK
-	&apq8064_device_ext_3p3v_vreg,
-#endif
+//	&apq8064_device_ext_3p3v_vreg,
 	&apq8064_device_ssbi_pmic1,
 	&apq8064_device_ssbi_pmic2,
 };
 
 static struct platform_device *pm8917_common_devices[] __initdata = {
 	&apq8064_device_ext_mpp8_vreg,
-#ifndef CONFIG_PANTECH_BLOCK
-	&apq8064_device_ext_3p3v_vreg,
-#endif
+	//	&apq8064_device_ext_3p3v_vreg,
 	&apq8064_device_ssbi_pmic1,
 	&apq8064_device_ssbi_pmic2,
 };
@@ -2965,10 +2961,11 @@ static struct platform_device *common_devices[] __initdata = {
 	&qseecom_device,
 #endif
 
-#ifdef CONFIG_SKY_DMB_TSIF_IF
-	&msm_8064_device_tsif[0],
-	//&msm_8064_device_tsif[1],
-#endif
+#if 1//def CONFIG_MSM_USE_TSIF1
+      &msm_8064_device_tsif[0], // EF48/49/50/51 use TSIF PORT1
+#else
+    //  &msm_8064_device_tsif[1],
+#endif /* CONFIG_MSM_USE_TSIF1 */
 
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
@@ -3054,9 +3051,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_iommu_domain_device,
 	&msm_tsens_device,
 	&apq8064_cache_dump_device,
-#ifndef CONFIG_PANTECH_BLOCK
-	&msm_8064_device_tspp,
-#endif
+	//&msm_8064_device_tspp,
 #ifdef CONFIG_BATTERY_BCL
 	&battery_bcl_device,
 #endif
@@ -4087,15 +4082,9 @@ static void __init apq8064_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
-#if 0// defined(CONFIG_MACH_APQ8064_EF48S) ||defined(CONFIG_MACH_APQ8064_EF49K) || defined(CONFIG_MACH_APQ8064_EF50L) || defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L) || defined(CONFIG_MACH_APQ8064_EF52S) || defined(CONFIG_MACH_APQ8064_EF52K) || defined(CONFIG_MACH_APQ8064_EF52L)
-	if ((machine_is_apq8064_mtp() || machine_is_apq8064_ef48s() || machine_is_apq8064_ef49k() || machine_is_apq8064_ef50l() || machine_is_apq8064_ef51s() || machine_is_apq8064_ef51k() || machine_is_apq8064_ef51l() || machine_is_apq8064_ef52s() ||  machine_is_apq8064_ef52k() ||  machine_is_apq8064_ef52l()) &&
-		SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
-        //cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
-//#else
-	if (machine_is_apq8064_mtp() &&
-		SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
-        //cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
-#endif
+//	if (machine_is_apq8064_mtp() &&
+//		SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
+//			cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
 	apq8064_common_init();
 	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 		machine_is_mpq8064_dtv()) {

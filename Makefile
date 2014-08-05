@@ -372,6 +372,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
+		   -Wno-uninitialized \
 		   -fno-delete-null-pointer-checks
 #// 20120105, albatros, imei 주소값의 공용으로 사용을 위해서
 

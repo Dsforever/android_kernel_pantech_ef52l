@@ -312,6 +312,8 @@ static int mdm_driver_queue_notification(char *name,
 			(void *)notif);
 	return ret;
 }
+
+#if (0)	// Assumed Needless Code by dscheon
 static irqreturn_t mdm_vddmin_change(int irq, void *dev_id)
 {
 	struct mdm_device *mdev = (struct mdm_device *)dev_id;
@@ -336,6 +338,7 @@ static irqreturn_t mdm_vddmin_change(int irq, void *dev_id)
 handled:
 	return IRQ_HANDLED;
 }
+#endif
 
 /* The vddmin_res resource may not be supported by some platforms. */
 static void mdm_setup_vddmin_gpios(void)
@@ -344,7 +347,9 @@ static void mdm_setup_vddmin_gpios(void)
 	struct msm_rpm_iv_pair req;
 	struct mdm_device *mdev;
 	struct mdm_vddmin_resource *vddmin_res;
+#if (0)	// Assumed Needless Code by dscheon.
 	int irq, ret;
+#endif
 
 	spin_lock_irqsave(&mdm_devices_lock, flags);
 	list_for_each_entry(mdev, &mdm_devices, link) {
@@ -362,7 +367,7 @@ static void mdm_setup_vddmin_gpios(void)
 		req.value |= (uint32_t)vddmin_res->drive_strength & 0x000000FF;
 
 		msm_rpm_set(MSM_RPM_CTX_SET_0, &req, 1);
-
+#if (0)	// Assumed Needless Code by dscheon.
 		/* Start monitoring low power gpio from mdm */
 		irq = MSM_GPIO_TO_INT(vddmin_res->mdm2ap_vddmin_gpio);
 		if (irq < 0)
@@ -377,6 +382,7 @@ static void mdm_setup_vddmin_gpios(void)
 				pr_err("%s: MDM LPM IRQ#%d request failed with error=%d",
 					   __func__, irq, ret);
 		}
+#endif
 	}
 	spin_unlock_irqrestore(&mdm_devices_lock, flags);
 	return;

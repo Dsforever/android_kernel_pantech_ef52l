@@ -312,3 +312,8 @@ config USB_QCOM_IPC_BRIDGE
 	  will be bridged in kernel space. This driver works as a transport
 	  layer for IPC router module that enables communication between
 	  APPS processor and MODEM processor.
+	  
+config USB_QCOM_KS_BRIDGE_COMPAT
+	boolean "USB Qualcomm kick start bridge compatibility mode"
+	depends on USB_QCOM_KS_BRIDGE
+	default n

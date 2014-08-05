@@ -472,6 +472,10 @@ static void __init mm_init(void)
 	vmalloc_init();
 }
 
+#if defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
+extern void mipi_renesas_fhd_manufature_ID_set(int sel);
+#endif 
+
 asmlinkage void __init start_kernel(void)
 {
 	char * command_line;
@@ -526,6 +530,18 @@ asmlinkage void __init start_kernel(void)
                 battchg_pause_offline = 1;
         }
 #endif
+#if defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
+	if (strstr(boot_command_line,"androidboot.lcdid=true")) {
+		mipi_renesas_fhd_manufature_ID_set(3);
+	    printk(KERN_NOTICE "[Sky Lcd]androidboot.lcdid=true\n");
+	}
+	else
+	{
+		mipi_renesas_fhd_manufature_ID_set(2);
+		printk(KERN_NOTICE "[Sky Lcd] doesn't exist androidboot.lcdid=true\n");
+	}
+#endif
+
 	jump_label_init();
 	/*
 	 * These use large bootmem allocations and must precede

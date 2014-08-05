@@ -49,6 +49,10 @@
 #define REG_PM8921_PON_CNTRL_3	0x01D
 #define PM8921_RESTART_REASON_MASK	0x07
 
+//20130412. menudapoka. added.
+static int hw_revision=0;
+module_param_named(hw_revision, hw_revision, int, S_IRUGO);
+
 #define SINGLE_IRQ_RESOURCE(_name, _irq) \
 { \
 	.name	= _name, \
@@ -891,6 +895,9 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 	}
 	pr_info("PMIC revision 2: %02X\n", val);
 	pmic->rev_registers |= val << BITS_PER_BYTE;
+
+//20130412. menudapoka. pm8921 revision.
+	hw_revision = pmic->rev_registers;
 
 	pmic->dev = &pdev->dev;
 	pm8921_drvdata.pm_chip_data = pmic;

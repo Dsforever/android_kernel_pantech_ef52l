@@ -46,6 +46,71 @@
 
 #include "msm_fb_panel.h"
 #include "mdp.h"
+
+/* lived, 2012.11.06 panel_power_on state check and set*/
+#define F_SKYDISP_CHECK_AND_SET_PANEL_POWER_ON
+/* lived, 2013.01.15 for fix underrun issue when using 4-layer bypass */
+//#define PANTECH_LCD_FIX_UNDERRUN
+/* lived, 2013.01.23 for fix mixer_info based on pipe_used not stage list
+   because, when the framework reset occurred, the pipe clean does not clearly */
+//#define PANTECH_LCD_PIPE_CLEAN_WHEN_FRAMEWORK_RESET
+/* lived, 2013.02.13 bug fix for mdp bandwidth request */
+#define PANTECH_LCD_BUG_FIX_MDP_BANDWIDTH_REQUEST
+/* lived, 2013.05.08 bug fix for mdp composition with AOT */
+#define PANTECH_LCD_BUG_FIX_QCPATCH_FOR_MDP_COMP_WITH_AOT
+/* lived, 2013.03.05 support framework reset when lcd off*/
+/* lived, 2013.03.20 add again by the following patch */
+/* https://www.codeaurora.org/gitweb/quic/la/?p=kernel/msm.git;a=commit;h=548ff607d8d20792203260e0d74e013b43ea3781 */
+#define PANTECH_LCD_SUPPORT_FRAMEWORK_RESET_WHEN_LCD_OFF
+
+//#define CONFIG_LCD_DRIVER_STABILITY
+#ifdef CONFIG_F_SKYDISP_SILENT_BOOT
+extern int backlight_value;
+#endif
+/*20120523, kkcho, for cabc_on_off_ctrl*/ // 20120607 shkwak, cabc disable when fhd test
+#if !defined(CONFIG_F_SKYDISP_CABC_CTRL) && !defined(CONFIG_FB_PANTECH_MIPI_DSI_RENESAS)
+#define CONFIG_F_SKYDISP_CABC_CTRL
+#endif
+
+/* 2013.01.21, lived, mdp clk 200->266 when 4 Layer bypass for underrun*/
+#if defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
+//#define PANTECH_LCD_INCREASE_MDP_CLK_200_TO_266_WHEN_4_LAYER_BYPASS
+#endif
+
+/*20121116, kkcho,  need only sharp-ips for LCD-Flicker and burning*/
+#if defined(CONFIG_MACH_APQ8064_EF48S) || defined(CONFIG_MACH_APQ8064_EF49K) || defined(CONFIG_MACH_APQ8064_EF50L) || defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
+#define FEATURE_SKYDISP_DISPLAY_FLICKER_SHARP_IPS 
+#endif
+
+/*20121122, kkcho, Bug fix : Intermittently, LCD_BL_ON skip problem*/
+//#define FEATURE_SKYDISP_BACKLIGHT_CONTROL_BUG_FIX
+
+//shkwak 20121107, qcom patch for lcd boot up fail and vsync update problem
+#if (defined(CONFIG_SKY_EF52S_BOARD)||defined(CONFIG_SKY_EF52K_BOARD)||defined(CONFIG_SKY_EF52L_BOARD)) && defined(CONFIG_FB_PANTECH_MIPI_SONY_CMD_HD_PANEL)
+//#define QCOM_PATCH_VSYNC_MIPICMD
+#endif
+
+#if defined(CONFIG_MACH_APQ8064_EF48S) || defined(CONFIG_MACH_APQ8064_EF49K) || defined(CONFIG_MACH_APQ8064_EF50L)
+/*20130103, kkcho, applied work-around code for JB
+  Bug fix : kernel-panic by "Unable to handle kernel NULL pointer dereference at virtual address 00000000"
+  call-stack : dma_cache_maint_page+0x24/0x10c <- arm_dma_unmap_page+0x5c/0xa0 <-mipi_dsi_cmd_dma_tx+0x214/0x254 <-mipi_dsi_cmds_tx
+  Reproduce path : repeat lcd on/off by power-key
+*/
+//#define FEATURE_SKYDISP_RESET_FIX_TEMP
+#define FEATURE_SKYDISP_RESET_FIX_SECOND_METHOD
+#define PANTECH_LCD_FIX_ABOUT_HALT_WHEN_LCD_ONOFF_DURING_WFD
+#endif
+
+/* 130124, Get LCD Revision(2 or 3).
+ * CONFIG_PANTECH_LCD_GET_LCD_REV is defined in below files.
+ * kernel/drivers/video/msm/msm_fb.h
+ * kernel/include/linux/msm_mdp.h
+ * vendor/pantech/build/CUST_PANTECH_DISPLAY.h
+ */
+#if (defined(CONFIG_SKY_EF51S_BOARD)||defined(CONFIG_SKY_EF51K_BOARD)||defined(CONFIG_SKY_EF51L_BOARD))
+#define CONFIG_PANTECH_LCD_GET_LCD_REV
+#endif
+
 #define BOOT_TOUCH_RESET
 
 #define MSM_FB_DEFAULT_PAGE_SIZE 2
@@ -216,7 +281,11 @@ struct msm_fb_data_type {
 	boolean panel_driver_on;
 	int vsync_sysfs_created;
 	void *copy_splash_buf;
+#ifdef CONFIG_F_SKYDISP_QCBUGFIX_CONTINUOUS_SPLASH_SCREEN_BUFFER_ALLOC_FOR_1080P
+	dma_addr_t copy_splash_phys;
+#else
 	unsigned char *copy_splash_phys;
+#endif
 	uint32 sec_mapped;
 	uint32 sec_active;
 	uint32 max_map_size;

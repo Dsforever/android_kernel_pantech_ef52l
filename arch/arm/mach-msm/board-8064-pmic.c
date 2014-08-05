@@ -126,6 +126,7 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 #ifndef FEATURE_SKYDISP_CONT_SPLASH_SKY_BOOT_IMAGE
 	PM8921_GPIO_OUTPUT(14, 1, HIGH),	/* HDMI Mux Selector */
 #endif
+	PM8921_GPIO_OUTPUT(23, 0, HIGH),	/* touchscreen power FET */
 	PM8921_GPIO_OUTPUT_BUFCONF(25, 0, LOW, CMOS), /* DISP_RESET_N */
 #ifndef FEATURE_SKYDISP_CONT_SPLASH_SKY_BOOT_IMAGE
 	PM8921_GPIO_OUTPUT_FUNC(26, 0, PM_GPIO_FUNC_2), /* Bl: Off, PWM mode */
@@ -142,7 +143,8 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	PM8921_GPIO_INPUT(38, PM_GPIO_PULL_UP_30),
 #endif
 	/* TABLA CODEC RESET */
-	PM8921_GPIO_OUTPUT(34, 0, MED),
+        PM8921_GPIO_OUTPUT(34, 1, MED),
+        PM8921_GPIO_INPUT(31, PM_GPIO_PULL_NO),
 	PM8921_GPIO_OUTPUT(13, 0, HIGH),               /* PCIE_CLK_PWR_EN */
 	PM8921_GPIO_INPUT(12, PM_GPIO_PULL_UP_30),     /* PCIE_WAKE_N */
 #ifdef CONFIG_PN544
@@ -726,7 +728,7 @@ apq8064_pm8921_bms_pdata __devinitdata = {
 #if defined(CONFIG_MACH_APQ8064_EF48S) ||defined(CONFIG_MACH_APQ8064_EF49K) || defined(CONFIG_MACH_APQ8064_EF50L) || defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L) || defined(CONFIG_MACH_APQ8064_EF52S) || defined(CONFIG_MACH_APQ8064_EF52K) || defined(CONFIG_MACH_APQ8064_EF52L) || defined(CONFIG_MACH_APQ8064_EF52W)
 static struct pm8xxx_vibrator_platform_data
 apq8064_pm8xxx_vib_pdata = {
-                .initial_vibrate_ms =500,
+                .initial_vibrate_ms =30,
                 .max_timeout_ms =15000,
                 .level_mV = 3000,
 };

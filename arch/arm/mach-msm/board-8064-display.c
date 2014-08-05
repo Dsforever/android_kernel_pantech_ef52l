@@ -221,6 +221,12 @@ void __init apq8064_allocate_fb_region(void)
 }
 
 #define MDP_VSYNC_GPIO 0
+#ifdef FEATURE_SKYDISP_SHARP_RENESAS_FHD   // p14682 kobj add 120830 
+#define PANEL_DEFAULT_WIDTH 1920
+#define PANEL_DEFAULT_HEIGHT 1088
+#define VIDEO_DEFAULT_FRAME 60
+#define VIDEO_FRAME_GAP 4
+#endif 
 
 static struct msm_bus_vectors mdp_init_vectors[] = {
 	{
@@ -235,8 +241,14 @@ static struct msm_bus_vectors mdp_ui_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
+#if defined(FEATURE_SKYDISP_SHARP_RENESAS_FHD)		// p14682 kobj add 120830 
+		.ab = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(488*640*1.5*VIDEO_DEFAULT_FRAME)),
+		.ib = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(488*640*1.5*VIDEO_DEFAULT_FRAME)) * 1.25*2,
+
+#else			
 		.ab = 216000000 * 2,
 		.ib = 270000000 * 2,
+#endif 		
 	},
 };
 
@@ -245,8 +257,14 @@ static struct msm_bus_vectors mdp_vga_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
+#if defined(FEATURE_SKYDISP_SHARP_RENESAS_FHD)		// p14682 kobj add 120830 
+		.ab = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(488*640*1.5*VIDEO_DEFAULT_FRAME)),
+		.ib = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(488*640*1.5*VIDEO_DEFAULT_FRAME)) * 1.25*2,
+
+#else			
 		.ab = 216000000 * 2,
 		.ib = 270000000 * 2,
+#endif 		
 	},
 };
 
@@ -255,8 +273,13 @@ static struct msm_bus_vectors mdp_720p_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
+#if defined(FEATURE_SKYDISP_SHARP_RENESAS_FHD)		// p14682 kobj add 120830 
+		.ab = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(736*1280*1.5*VIDEO_DEFAULT_FRAME)),
+		.ib = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(736*1280*1.5*VIDEO_DEFAULT_FRAME)) * 1.25*2,
+#else			
 		.ab = 230400000 * 2,
 		.ib = 288000000 * 2,
+#endif 		
 	},
 };
 
@@ -265,10 +288,32 @@ static struct msm_bus_vectors mdp_1080p_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_MDP_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
+#if defined(FEATURE_SKYDISP_SHARP_RENESAS_FHD)		// p14682 kobj add 120830 
+		.ab = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(1088*1920*1.5*VIDEO_DEFAULT_FRAME)),
+		.ib = ((PANEL_DEFAULT_WIDTH*PANEL_DEFAULT_HEIGHT*VIDEO_DEFAULT_FRAME*VIDEO_FRAME_GAP)+(1088*1920*1.5*VIDEO_DEFAULT_FRAME)) * 1.25*2,
+#else	
 		.ab = 334080000 * 2,
 		.ib = 417600000 * 2,
+#endif 		
 	},
 };
+
+#ifdef CONFIG_PANTECH_LCD_FIX_UNDERRUN_WITH_3LAYER
+static struct msm_bus_vectors mdp_1080p_plus_vectors[] = {
+	/* 1080p and less video */
+	{
+		.src = MSM_BUS_MASTER_MDP_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+#if defined(FEATURE_SKYDISP_SHARP_RENESAS_FHD)
+        .ab = 3080000000LL * 0.8,
+        .ib = 3080000000LL * 0.8,
+#else	
+		.ab = 334080000 * 2,
+		.ib = 417600000 * 2,
+#endif 		
+	},
+};
+#endif
 
 static struct msm_bus_paths mdp_bus_scale_usecases[] = {
 	{
@@ -295,6 +340,12 @@ static struct msm_bus_paths mdp_bus_scale_usecases[] = {
 		ARRAY_SIZE(mdp_1080p_vectors),
 		mdp_1080p_vectors,
 	},
+#ifdef CONFIG_PANTECH_LCD_FIX_UNDERRUN_WITH_3LAYER
+	{
+		ARRAY_SIZE(mdp_1080p_plus_vectors),
+		mdp_1080p_plus_vectors,
+	},
+#endif
 };
 
 static struct msm_bus_scale_pdata mdp_bus_scale_pdata = {
@@ -875,10 +926,10 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 	} else {
-
+#if 0		// test 
 		gpio_set_value_cansleep(gpio_lcd_bl_en, 0);  // FEATURE_RENESAS_BL_CTRL_CHG
 		gpio_set_value_cansleep(gpio_lcd_bl_ctl, 0);  // FEATURE_RENESAS_BL_CTRL_CHG
-
+#endif 
 		gpio_set_value_cansleep(gpio_lcd_mipi_reset,0);
 #ifdef CONFIG_F_SKYDISP_SHARP_LCD_FLICKER  
 		if (!is_chg_notify_lcd())
@@ -2167,6 +2218,10 @@ static void set_mdp_clocks_for_wuxga(void)
 	mdp_720p_vectors[0].ib = 2000000000;
 	mdp_1080p_vectors[0].ab = 2000000000;
 	mdp_1080p_vectors[0].ib = 2000000000;
+#ifdef CONFIG_PANTECH_LCD_FIX_UNDERRUN_WITH_3LAYER
+    mdp_1080p_plus_vectors[0].ab = 2000000000;
+	mdp_1080p_plus_vectors[0].ib = 2000000000;
+#endif
 
 	if (apq8064_hdmi_as_primary_selected()) {
 		dtv_bus_def_vectors[0].ab = 2000000000;

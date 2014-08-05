@@ -630,6 +630,8 @@ msm8064_pm8921_regulator_pdata[] __devinitdata = {
 #else
 	PM8XXX_VS300(HDMI_MVS, "8921_hdmi_mvs", 0, 1,         0, "ext_5v", 3),
 #endif
+//20120326 so2firethread. 
+	PM8XXX_NLDO1200(L29, "8921_l29", 0, 1, 2800000, 2800000, 200, NULL,0, 4),
 };
 
 /* PM8917 regulator constraints */

@@ -50,6 +50,11 @@
 #include <mach/iommu_domains.h>
 #include <mach/msm_cache_dump.h>
 
+#ifdef CONFIG_TSIF
+#include <mach/msm_tsif.h>
+#include <linux/gpio.h>
+#endif
+
 /* Address of GSBI blocks */
 #define MSM_GSBI1_PHYS		0x12440000
 #define MSM_GSBI2_PHYS		0x13440000
@@ -740,37 +745,39 @@ struct platform_device apq_cpudai_slim_4_tx = {
 #define MSM_TSIF1_PHYS       (0x18201000)
 #define MSM_TSIF_SIZE        (0x200)
 
+//EF48,49,50,51S/L TSIF port1
 #define TSIF_0_CLK       GPIO_CFG(55, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
 #define TSIF_0_EN        GPIO_CFG(56, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
 #define TSIF_0_DATA      GPIO_CFG(57, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#if 0
 #define TSIF_0_SYNC      GPIO_CFG(62, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-#define TSIF_1_CLK       GPIO_CFG(59, 1, GPIO_CFG_INPUT, \
+#endif
+#define TSIF_1_CLK       GPIO_CFG(55/*59*/, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-#define TSIF_1_EN        GPIO_CFG(60, 1, GPIO_CFG_INPUT, \
+#define TSIF_1_EN        GPIO_CFG(56/*60*/, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-#define TSIF_1_DATA      GPIO_CFG(61, 1, GPIO_CFG_INPUT, \
+#define TSIF_1_DATA      GPIO_CFG(57/*61*/, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
+#if 0
 #define TSIF_1_SYNC      GPIO_CFG(58, 1, GPIO_CFG_INPUT, \
 	GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-
+#endif
 static const struct msm_gpio tsif0_gpios[] = {
 	{ .gpio_cfg = TSIF_0_CLK,  .label =  "tsif_clk", },
 	{ .gpio_cfg = TSIF_0_EN,   .label =  "tsif_en", },
 	{ .gpio_cfg = TSIF_0_DATA, .label =  "tsif_data", },
-#ifndef CONFIG_SKY_DMB_TSIF_IF
-	{ .gpio_cfg = TSIF_0_SYNC, .label =  "tsif_sync", },
-#endif
+	//{ .gpio_cfg = TSIF_0_SYNC, .label =  "tsif_sync", },
 };
 
 static const struct msm_gpio tsif1_gpios[] = {
 	{ .gpio_cfg = TSIF_1_CLK,  .label =  "tsif_clk", },
 	{ .gpio_cfg = TSIF_1_EN,   .label =  "tsif_en", },
 	{ .gpio_cfg = TSIF_1_DATA, .label =  "tsif_data", },
-	{ .gpio_cfg = TSIF_1_SYNC, .label =  "tsif_sync", },
+	//{ .gpio_cfg = TSIF_1_SYNC, .label =  "tsif_sync", },
 };
 
 struct msm_tsif_platform_data tsif1_8064_platform_data = {
@@ -853,11 +860,11 @@ static const struct msm_gpio tspp_gpios[] = {
 	{ .gpio_cfg = TSIF_0_CLK,  .label =  "tsif_clk", },
 	{ .gpio_cfg = TSIF_0_EN,   .label =  "tsif_en", },
 	{ .gpio_cfg = TSIF_0_DATA, .label =  "tsif_data", },
-	{ .gpio_cfg = TSIF_0_SYNC, .label =  "tsif_sync", },
+//	{ .gpio_cfg = TSIF_0_SYNC, .label =  "tsif_sync", },
 	{ .gpio_cfg = TSIF_1_CLK,  .label =  "tsif_clk", },
 	{ .gpio_cfg = TSIF_1_EN,   .label =  "tsif_en", },
 	{ .gpio_cfg = TSIF_1_DATA, .label =  "tsif_data", },
-	{ .gpio_cfg = TSIF_1_SYNC, .label =  "tsif_sync", },
+//	{ .gpio_cfg = TSIF_1_SYNC, .label =  "tsif_sync", },
 };
 
 static struct resource tspp_resources[] = {

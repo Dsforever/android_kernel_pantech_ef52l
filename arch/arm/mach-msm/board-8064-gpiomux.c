@@ -61,8 +61,10 @@ struct msm_gpiomux_config apq8064_ethernet_configs[] = {
 /* Chip selects for SPI clients */
 static struct gpiomux_setting gpio_spi_cs_config = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_12MA,
-	.pull = GPIOMUX_PULL_UP,
+	.drv = GPIOMUX_DRV_2MA,		//p13795
+	//.drv = GPIOMUX_DRV_12MA,
+	.pull = GPIOMUX_PULL_DOWN,	//p13795
+	//.pull = GPIOMUX_PULL_UP,
 };
 
 /* Chip selects for EPM SPI clients */
@@ -402,7 +404,9 @@ static struct gpiomux_setting wcnss_5wire_active_cfg = {
 
 static struct gpiomux_setting slimbus = {
 	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
+	/* 20130320 Jimmy, change 8MA->16MA (198606 slimbus debug patch) */
+//	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_16MA,
 	.pull = GPIOMUX_PULL_KEEPER,
 };
 
@@ -2033,11 +2037,17 @@ void __init apq8064_init_gpiomux(void)
 				ARRAY_SIZE(msm8064_mdp_vsync_configs));
 	
 #endif 
+//#if defined(CONFIG_SKY_EF51S_BOARD) || defined(CONFIG_SKY_EF51K_BOARD) || defined(CONFIG_SKY_EF51L_BOARD)     
+#if defined(CONFIG_TOUCHSCREEN_PP8360) && (defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)) 
+
+		 msm_gpiomux_install(apq8064_back_touch_config,
+			 ARRAY_SIZE(apq8064_back_touch_config));
+#endif
+
 	 if (machine_is_mpq8064_cdp())
 		msm_gpiomux_install(mpq8064_ir_configs,
 				ARRAY_SIZE(mpq8064_ir_configs));
-
-#ifndef CONFIG_PANTECH_BLOCK
+#if 0
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 	 msm_gpiomux_install(apq8064_sdc2_configs,
 			     ARRAY_SIZE(apq8064_sdc2_configs));
@@ -2054,8 +2064,10 @@ void __init apq8064_init_gpiomux(void)
 	 if (machine_is_mpq8064_hrd() || machine_is_mpq8064_dtv())
 		msm_gpiomux_install(mpq8064_uartdm_configs,
 				ARRAY_SIZE(mpq8064_uartdm_configs));
+
 #if CONFIG_BOARD_VER >= CONFIG_WS20 && defined(CONFIG_UNUSED_GPIO_MPP_SETTING)
     msm_gpiomux_install(apq8064_unused_gpio_configs,
 			ARRAY_SIZE(apq8064_unused_gpio_configs));
 #endif
+
 }
