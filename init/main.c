@@ -437,6 +437,19 @@ void __init parse_early_param(void)
  *	Activate the first processor.
  */
 
+
+static void __init cpu_len_lk(void)
+{
+	int cn = smp_processor_id();
+	printk("=====================================================\n");
+	printk("smp_processor_id = %d\n", cn);
+
+	if(cn >1)
+	{
+		setup_nr_cpu_ids();
+	}
+	
+}
 static void __init boot_cpu_init(void)
 {
 	int cpu = smp_processor_id();
@@ -510,7 +523,10 @@ asmlinkage void __init start_kernel(void)
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
-	setup_nr_cpu_ids();
+
+	cpu_len_lk();
+	//setup_nr_cpu_ids();
+	
 	setup_per_cpu_areas();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
 
@@ -530,6 +546,7 @@ asmlinkage void __init start_kernel(void)
                 battchg_pause_offline = 1;
         }
 #endif
+
 #if defined(CONFIG_MACH_APQ8064_EF51S) || defined(CONFIG_MACH_APQ8064_EF51K) || defined(CONFIG_MACH_APQ8064_EF51L)
 	if (strstr(boot_command_line,"androidboot.lcdid=true")) {
 		mipi_renesas_fhd_manufature_ID_set(3);
@@ -540,9 +557,9 @@ asmlinkage void __init start_kernel(void)
 		mipi_renesas_fhd_manufature_ID_set(2);
 		printk(KERN_NOTICE "[Sky Lcd] doesn't exist androidboot.lcdid=true\n");
 	}
-#endif
+#endif 
 
-	jump_label_init();
+//	jump_label_init();	
 	/*
 	 * These use large bootmem allocations and must precede
 	 * kmem_cache_init()

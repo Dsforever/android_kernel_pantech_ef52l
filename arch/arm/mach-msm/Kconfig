@@ -2476,7 +2476,6 @@ config MSM_OCMEM_POWER_DISABLE
 
 config MSM_RTB
 	bool "Register tracing"
-	default y
 	help
 	  Add support for logging different events to a small uncached
 	  region. This is designed to aid in debugging reset cases where the

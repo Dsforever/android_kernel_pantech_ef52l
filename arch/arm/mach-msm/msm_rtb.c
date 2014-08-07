@@ -35,6 +35,9 @@
 
 #define RTB_COMPAT_STR	"qcom,msm-rtb"
 
+//p14291
+#define RTB_ADDR_DATASECTION_FOR_EBICS0 //P14291_121115
+
 /* Write
  * 1) 3 bytes sentinel
  * 2) 1 bytes of log type
@@ -74,6 +77,10 @@ struct msm_rtb_state msm_rtb = {
 	.filter = 1 << LOGK_READL | 1 << LOGK_WRITEL,
 	.enabled = 1,
 };
+
+#ifdef RTB_ADDR_DATASECTION_FOR_EBICS0
+#define PANTECH_RTB_MEMORY_BUFFER_BASE 0x88D00000
+#endif
 
 module_param_named(filter, msm_rtb.filter, uint, 0644);
 module_param_named(enable, msm_rtb.enabled, int, 0644);
@@ -256,12 +263,28 @@ int msm_rtb_probe(struct platform_device *pdev)
 	 * address of the buffer. This is necessary for cases where
 	 * the only way to access the buffer is a physical address.
 	 */
+	#ifdef RTB_ADDR_DATASECTION_FOR_EBICS0 //p14291
+	msm_rtb.phys = PANTECH_RTB_MEMORY_BUFFER_BASE; //P14291_121115
+	#else
 	msm_rtb.phys = allocate_contiguous_ebi_nomap(msm_rtb.size, SZ_4K);
+	#endif
 
 	if (!msm_rtb.phys)
 		return -ENOMEM;
 
+	#ifdef RTB_ADDR_DATASECTION_FOR_EBICS0 //p14291
+	//P14291_121115
+	if (msm_rtb.size > 0x100000){ 
+		printk("[PANTECH_RTB_BUFFER] Critical Warning.. SIZE should be less than 1M (size:0x%x)\n",msm_rtb.size);
+		return -ENOMEM;
+	}
+	else{
+		msm_rtb.rtb = ioremap_nocache(msm_rtb.phys, msm_rtb.size);
+		printk("[PANTECH_RTB_BUFFER] phy_addr=%lu, rtb_addr=%p\n",msm_rtb.phys, (void*)msm_rtb.rtb);
+	}	
+	#else
 	msm_rtb.rtb = ioremap(msm_rtb.phys, msm_rtb.size);
+	#endif
 
 	if (!msm_rtb.rtb) {
 		free_contiguous_memory_by_paddr(msm_rtb.phys);

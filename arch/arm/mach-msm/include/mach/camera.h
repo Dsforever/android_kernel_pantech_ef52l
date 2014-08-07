@@ -150,6 +150,21 @@ struct msm_vpe_phy_info {
 #define VFE31_OUTPUT_MODE_P_ALL_CHNLS (0x1 << 5)
 #endif
 
+#define CSI_EMBED_DATA 0x12
+#define CSI_RESERVED_DATA_0 0x13
+#define CSI_YUV422_8  0x1E
+#if 1//#ifdef F_PANTECH_CAMERA_1080P_PREVIEW	
+#define CSI_RESERVED_DATA 0x13
+#endif
+#define CSI_RAW8    0x2A
+#define CSI_RAW10   0x2B
+#define CSI_RAW12   0x2C
+
+#define CSI_DECODE_6BIT 0
+#define CSI_DECODE_8BIT 1
+#define CSI_DECODE_10BIT 2
+#define CSI_DECODE_DPCM_10_8_10 5
+
 struct msm_vfe_phy_info {
 	uint32_t sbuf_phy;
 	uint32_t planar0_off;
