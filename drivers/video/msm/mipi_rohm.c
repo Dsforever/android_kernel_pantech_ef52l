@@ -84,6 +84,11 @@ static struct msm_panel_common_pdata *mipi_rohm_pdata;
 
 static struct dsi_buf rohm_tx_buf;
 static struct dsi_buf rohm_rx_buf;
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+static struct dsi_buf rohm_tx_on_buf;
+static struct dsi_buf rohm_tx_off_buf;
+static struct dsi_buf rohm_tx_bl_ctrl_buf;
+#endif
 
 struct lcd_state_type {
     boolean disp_powered_up;
@@ -577,62 +582,8 @@ void cabc_control(struct msm_fb_data_type *mfd, int state)
 }
 #endif
 
-#if defined(CONFIG_F_SKYDISP_CE_TUNING_M1) || defined(CONFIG_F_SKYDISP_CE_TUNING_M2)
+#if defined(CONFIG_F_SKYDISP_CE_TUNING_M2)
 unsigned int ce_case_state = 0;
-#endif
-#ifdef CONFIG_F_SKYDISP_CE_TUNING_M1
-void SKY_LCD_CE_CASE_SET(struct msm_fb_data_type *mfd, uint32_t CEcase)
-{
-    	ENTER_FUNC2();
-
-	ce_case_state = CEcase;  	
-
-	mutex_lock(&rohm_state.lcd_mutex);		
-	mipi_set_tx_power_mode(0);
-	switch(CEcase) {
-		case 0:  //default
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_off_cmds,
-									ARRAY_SIZE(rohm_display_ce_off_cmds));
-			break;
-		case 1:  
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_case1_set_cmds,
-									ARRAY_SIZE(rohm_display_ce_case1_set_cmds));
-			break;
-		case 2:  
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_case2_set_cmds,
-									ARRAY_SIZE(rohm_display_ce_case2_set_cmds));
-			break;
-		case 3:  
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_case3_set_cmds,
-									ARRAY_SIZE(rohm_display_ce_case3_set_cmds));
-			break;
-		case 4:  
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_case4_set_cmds,
-									ARRAY_SIZE(rohm_display_ce_case4_set_cmds));
-			break;
-		case 5:  
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_case5_set_cmds,
-									ARRAY_SIZE(rohm_display_ce_case5_set_cmds));
-			break;
-		case 6:  
-				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_case6_set_cmds,
-									ARRAY_SIZE(rohm_display_ce_case6_set_cmds));
-			break;		
-		default:
-			break;			
-	}
-	mipi_set_tx_power_mode(1);
-	mutex_unlock(&rohm_state.lcd_mutex);	
-}
-
-uint32_t SKY_LCD_CE_CASE_GET(void)
-{
-	printk(KERN_INFO "[SKY_LCD] SKY_LCD_CE_CASE_GET : %d\n", ce_case_state);
-	return ce_case_state;	   	
-}
-
-EXPORT_SYMBOL(SKY_LCD_CE_CASE_SET);
-EXPORT_SYMBOL(SKY_LCD_CE_CASE_GET);
 #endif
 
 #ifdef CONFIG_F_SKYDISP_CE_TUNING_M2
@@ -694,6 +645,9 @@ static int lcd_on_skip_during_bootup =0;
 static int mipi_rohm_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+	struct dsi_buf *rohm_on_tp;
+#endif
 
 	ENTER_FUNC2();
 
@@ -750,11 +704,19 @@ static int mipi_rohm_lcd_on(struct platform_device *pdev)
 		}	
 #endif
 
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+		mipi_dsi_buf_init(&rohm_tx_on_buf);
+		rohm_on_tp = &rohm_tx_on_buf;
+		mipi_dsi_cmds_tx(rohm_on_tp, rohm_display_init_cmds,
+				ARRAY_SIZE(rohm_display_init_cmds));		
+#else
 		mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_init_cmds,
 				ARRAY_SIZE(rohm_display_init_cmds));
+#endif
 		rohm_state.disp_initialized = true;
 	}
-#if defined(CONFIG_F_SKYDISP_CE_TUNING_M1) || defined(CONFIG_F_SKYDISP_CE_TUNING_M2)
+#if (0) // kkcho_temp	
+#if defined(CONFIG_F_SKYDISP_CE_TUNING_M2)
 	switch(ce_case_state) {
 	case 0:  //default
 		mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_off_cmds,
@@ -795,9 +757,15 @@ static int mipi_rohm_lcd_on(struct platform_device *pdev)
 	mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_ce_off_cmds,
 			ARRAY_SIZE(rohm_display_ce_off_cmds));
 #endif
+#endif
 
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+	mipi_dsi_cmds_tx(rohm_on_tp, rohm_display_on_cmds,
+			ARRAY_SIZE(rohm_display_on_cmds));
+#else
 	mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_on_cmds,
 			ARRAY_SIZE(rohm_display_on_cmds));
+#endif
 	rohm_state.disp_on = true;
 
 #ifdef FEATURE_ROHM_CABC_ON
@@ -810,23 +778,43 @@ static int mipi_rohm_lcd_on(struct platform_device *pdev)
 		{
 #ifdef CONFIG_F_SKYDISP_CABC_CTRL
 			if(rohm_state.acl_flag == true){
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+				mipi_dsi_cmds_tx(rohm_on_tp, rohm_display_cabc_off_cmds,
+						ARRAY_SIZE(rohm_display_cabc_off_cmds));
+#else
 				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_cabc_off_cmds,
 						ARRAY_SIZE(rohm_display_cabc_off_cmds));
+#endif
 			}
 			else{ 	
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+				mipi_dsi_cmds_tx(rohm_on_tp, rohm_display_cabc_on_cmds,
+						ARRAY_SIZE(rohm_display_cabc_on_cmds));
+#else				
 				mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_cabc_on_cmds,
 						ARRAY_SIZE(rohm_display_cabc_on_cmds));
+#endif
 			}
-#else				
+#else			
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+			mipi_dsi_cmds_tx(rohm_on_tp, rohm_display_cabc_on_cmds,
+					ARRAY_SIZE(rohm_display_cabc_on_cmds));
+#else
 			mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_cabc_on_cmds,
 					ARRAY_SIZE(rohm_display_cabc_on_cmds));
+#endif
 #endif
 		}
 #ifdef CONFIG_F_SKYDISP_CHANGE_BL_TABLE_WHEN_OFFLINE_CHARGING
 		else
 		{
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+			mipi_dsi_cmds_tx(rohm_on_tp, rohm_display_cabc_off_cmds,
+					ARRAY_SIZE(rohm_display_cabc_off_cmds));
+#else		
 			mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_cabc_off_cmds,
 					ARRAY_SIZE(rohm_display_cabc_off_cmds));
+#endif
 		}
 #endif
 #endif
@@ -859,6 +847,9 @@ out:
 static int mipi_rohm_lcd_off(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+	struct dsi_buf *rohm_off_tp;
+#endif
 
 	ENTER_FUNC2();
 
@@ -880,7 +871,13 @@ static int mipi_rohm_lcd_off(struct platform_device *pdev)
 #if (0) //def FEATURE_ROHM_BLACK_DATA_CMD
 		mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_black_data_cmds,	ARRAY_SIZE(rohm_display_black_data_cmds));
 #endif
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+		mipi_dsi_buf_init(&rohm_tx_off_buf);
+		rohm_off_tp = &rohm_tx_off_buf;
+		mipi_dsi_cmds_tx(rohm_off_tp, rohm_display_off_cmds,	ARRAY_SIZE(rohm_display_off_cmds));		
+#else
 		mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_off_cmds,	ARRAY_SIZE(rohm_display_off_cmds));
+#endif
 		rohm_state.disp_on = false;
 		rohm_state.disp_initialized = false;
 		mipi_set_tx_power_mode(1);	
@@ -911,13 +908,13 @@ static int low_level_cabc_ctrl(int on)
 
 	struct msm_fb_data_type *mfd;
 	struct fb_info *info; 
-	static int prev_on;
+	//static int prev_on;
 
 	info = registered_fb[0];
 	mfd = (struct msm_fb_data_type *)info->par;
 
-	if(on == prev_on)
-		return 0;
+	//if(on == prev_on)
+		//return 0;
 
 	if(on)
 	{
@@ -932,17 +929,16 @@ static int low_level_cabc_ctrl(int on)
 		//printk("[SKY_LCD]********* cabc_off \n");
 	}
 	
-	prev_on = on;
+	//prev_on = on;
 	return 0;
 }
 #endif
 static void mipi_rohm_set_backlight(struct msm_fb_data_type *mfd)
 {
-	int bl_level;
-
-#ifdef CONFIG_F_SKYDISP_SKIP_BLSET_WITH_EFS_ERASE
-	mfd->bl_set_first_skip =0;
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+	struct dsi_buf *rohm_bl_ctrl_tp;
 #endif
+	int bl_level;
 
 #ifndef FEATURE_RENESAS_BL_CTRL_CHG
 	if (prev_bl_level == mfd->bl_level)
@@ -989,8 +985,15 @@ static void mipi_rohm_set_backlight(struct msm_fb_data_type *mfd)
 	
 	mutex_lock(&rohm_state.lcd_mutex);		
 	mipi_set_tx_power_mode(0);
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP	
+	mipi_dsi_buf_init(&rohm_tx_bl_ctrl_buf);
+	rohm_bl_ctrl_tp = &rohm_tx_bl_ctrl_buf;
+	mipi_dsi_cmds_tx(rohm_bl_ctrl_tp, rohm_display_cabc_bl_set_cmds,
+			ARRAY_SIZE(rohm_display_cabc_bl_set_cmds));
+#else
 	mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_cabc_bl_set_cmds,
 			ARRAY_SIZE(rohm_display_cabc_bl_set_cmds));
+#endif
 	prev_bl_level = mfd->bl_level;	
 #ifdef FEATURE_LOW_LEVEL_CABC_OFF
 	if(!rohm_state.acl_flag) // UI_set is cabc_on
@@ -1010,8 +1013,6 @@ static void mipi_rohm_set_backlight(struct msm_fb_data_type *mfd)
 		}
 	}
 #endif
-	mipi_set_tx_power_mode(1);
-	mutex_unlock(&rohm_state.lcd_mutex);	
 	
 	if(bl_level == 0)
 	{
@@ -1024,9 +1025,16 @@ static void mipi_rohm_set_backlight(struct msm_fb_data_type *mfd)
 #endif		  
 #ifdef FEATURE_ROHM_BLACK_DATA_CMD
 		//printk("kkcho********* black_cmd_on\n");
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP	
+		mipi_dsi_cmds_tx(rohm_bl_ctrl_tp, rohm_display_black_data_cmds,	ARRAY_SIZE(rohm_display_black_data_cmds));
+#else
 		mipi_dsi_cmds_tx(&rohm_tx_buf, rohm_display_black_data_cmds,	ARRAY_SIZE(rohm_display_black_data_cmds));
+#endif
 #endif		  		  
 	}
+
+	mipi_set_tx_power_mode(1);
+	mutex_unlock(&rohm_state.lcd_mutex);	
 
 #ifdef CONFIG_F_PREVENT_RESET_DURING_BOOTUP
 	mfd->backlight_on_after_bootup =1;	
@@ -1193,9 +1201,16 @@ static int __init mipi_rohm_lcd_init(void)
 
     rohm_state.disp_powered_up = true;
 
+#ifdef FEATURE_SKYDISP_RESET_FIX_TEMP
+    mipi_dsi_buf_alloc(&rohm_tx_on_buf, ALIGN(DSI_BUF_SIZE, SZ_4K));
+    mipi_dsi_buf_alloc(&rohm_tx_off_buf, ALIGN(DSI_BUF_SIZE, SZ_4K));
+    mipi_dsi_buf_alloc(&rohm_tx_bl_ctrl_buf, ALIGN(DSI_BUF_SIZE, SZ_4K));	
+    mipi_dsi_buf_alloc(&rohm_tx_buf, ALIGN(DSI_BUF_SIZE, SZ_4K));
+    mipi_dsi_buf_alloc(&rohm_rx_buf, ALIGN(DSI_BUF_SIZE, SZ_4K));	
+#else
     mipi_dsi_buf_alloc(&rohm_tx_buf, DSI_BUF_SIZE);
     mipi_dsi_buf_alloc(&rohm_rx_buf, DSI_BUF_SIZE);
-
+#endif
     EXIT_FUNC2();
 
     return platform_driver_register(&this_driver);

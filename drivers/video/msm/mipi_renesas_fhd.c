@@ -78,7 +78,8 @@ unsigned int is_silent_boot_mode, is_backlight_on_before_reset, is_silent_boot_m
 #if CONFIG_BOARD_VER <= CONFIG_WS20
 #define SKY_LCD_SINGLE_WIRE_LB_CON					
 #else
-#define CABC_MAX_60
+//#define CABC_MAX_60
+#define CABC_POWER_RED
 //#define CABC_MAX_45
 //#define CABC_MAX_30
 #endif 
@@ -92,11 +93,9 @@ struct lcd_state_type {
     boolean disp_powered_up;
     boolean disp_initialized;
     boolean disp_on;
+    //int inversion_type;
 #ifdef CONFIG_LCD_CABC_CONTROL
     int acl_flag;
-#endif
-#if (1) // kkcho_temp
-    int test_control_flag;
 #endif
     struct mutex lcd_mutex;
 };
@@ -127,6 +126,8 @@ char disp_off[2]    = {0x28, 0x00};
 char protect_off[2]    	= {0xb0, 0x00};
 char dsc[2]    			= {0x00, 0x00};
 
+char pwm_dimming[8] = {0xce,0x00,0x04,0x00,0xc1,0xd1,0x0a,0x06};
+
 char display_setting_1dot[8]	= {0xc2,0x30,0x07,0x80,0x06,0x08,0x00,0x00};
 char display_setting_2dot[8]	= {0xc2,0x30,0x17,0x80,0x06,0x08,0x00,0x00};
 char display_setting_3dot[8]	= {0xc2,0x30,0x27,0x80,0x06,0x08,0x00,0x00};
@@ -140,8 +141,9 @@ char protect_on[2]   	= {0xb0, 0x03};
 //	Backlight Cabc control command
 //=================================================================//
 #ifndef SKY_LCD_SINGLE_WIRE_LB_CON		
+char cabc_min_bl_val[3]    	= {0x5e, 0x00, 40};
 char cabc_data_val[3]    	= {0x51, 0x00,0xff};		// 0xfff  | 0xff
-char cabc_ctrl_val[2]    	= {0x53, 0x24};		
+char cabc_ctrl_val[2]    	= {0x53, 0x2c};
 /* cabc_ctrl_con parameter is changed in cabc_control() */
 char cabc_ctrl_con[2]    	= {0x55, 0x03};			// 00 off 01 ui 02 still 03 movie
 
@@ -149,10 +151,10 @@ char cabc_ctrl_con[2]    	= {0x55, 0x03};			// 00 off 01 ui 02 still 03 movie
 char back_light_con1[26]= {0xb8,0x18,0x80,0x18,0x18,0xcf,0x1f,0x00,0x0c,0x12,0x6c,0x11,0x6c,0x12,0x0c,0x12,0xda,0x6d,0xff,0xff,0x10,0x67,0xa3,0xdb,0xfb,0xff};
 char back_light_con2[8]	= {0xb9,0x00,0x30,0x18,0x18,0x9f,0x1f,0x80};
 char back_light_con4[8]	= {0xba,0x00,0x30,0x04,0x40,0x9f,0x1f,0xd7};
-
-static struct dsi_cmd_desc renesas_cabc_ctrl_con_cmds[] = {
-    {DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(cabc_ctrl_con), cabc_ctrl_con},
-};
+#elif defined(CABC_POWER_RED)
+char back_light_con1[26]= {0xb8,0x18,0x80,0x18,0x18,0xcf,0x1f,0x00,0x0c,0x10,0x5c,0x10,0xac,0x10,0x0c,0x10,0xda,0x6d,0xff,0xff,0x10,0x67,0x89,0xaf,0xd6,0xff};
+char back_light_con2[8]	= {0xb9,0x0f,0x18,0x18,0x18,0x9f,0x1f,0x80};
+char back_light_con4[8]	= {0xba,0x0f,0x18,0x04,0x40,0x9f,0x1f,0xd7};
 #elif defined(CABC_MAX_45)
 char back_light_con1[26]= {0xb8,0x18,0x80,0x18,0x18,0xcf,0x1f,0x00,0x0c,0x0e,0x6c,0x0e,0x6c,0x0e,0x0c,0x0e,0xda,0x6d,0xff,0xff,0x10,0x8c,0xd2,0xff,0xff,0xff};
 char back_light_con2[8]	= {0xb9,0x00,0x3f,0x18,0x18,0x9f,0x1f,0x80};
@@ -163,6 +165,10 @@ char back_light_con2[8]	= {0xb9,0x00,0x3f,0x18,0x18,0x9f,0x1f,0x80};
 char back_light_con4[8]	= {0xba,0x00,0x3f,0x04,0x40,0x9f,0x1f,0xd7};
 #endif 
 
+static struct dsi_cmd_desc renesas_cabc_ctrl_con_cmds[] = {
+    {DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(cabc_min_bl_val), cabc_min_bl_val},
+    {DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(cabc_ctrl_con), cabc_ctrl_con},
+};
 static char bl_table[] = {0, 25, 40, 55, 70, 85, 100, 115, 130, 145, 160, 175, 190, 205, 220, 235, 255}; 
 
 #endif 
@@ -228,6 +234,7 @@ static struct dsi_cmd_desc renesas_part1[] = {
     // dcs command NOPs
     {DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(dsc), dsc},
     {DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(dsc), dsc},
+    {DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(pwm_dimming), pwm_dimming},
 };
 
 static struct dsi_cmd_desc renesas_part2[] = {
@@ -247,6 +254,7 @@ static struct dsi_cmd_desc renesas_part2[] = {
     {DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(dsc), dsc},
     {DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(dsc), dsc},
 #ifndef SKY_LCD_SINGLE_WIRE_LB_CON
+    {DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(cabc_min_bl_val), cabc_min_bl_val},
     // cabc_data_val
     {DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(cabc_data_val), cabc_data_val},
     // cabc_ctrl_val
@@ -256,6 +264,12 @@ static struct dsi_cmd_desc renesas_part2[] = {
 #endif
 };
 
+static struct dsi_cmd_desc renesas_1Column[] = {
+    // 1column inversion
+    {DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_setting_1Column), display_setting_1Column},
+};
+
+#ifdef PANTECH_LCD_CHANGE_INVERSION
 static struct dsi_cmd_desc renesas_1HDot[] = {
     // 1dot inversion
     {DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_setting_1dot), display_setting_1dot},
@@ -271,15 +285,11 @@ static struct dsi_cmd_desc renesas_3HDot[] = {
     {DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_setting_3dot), display_setting_3dot},
 };
 
-static struct dsi_cmd_desc renesas_1Column[] = {
-    // 1column inversion
-    {DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_setting_1Column), display_setting_1Column},
-};
-
 static struct dsi_cmd_desc renesas_3Column[] = {
     // 3column inversion
     {DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_setting_3Column), display_setting_3Column},
 };
+#endif
 
 //================================================================
 //	Function
@@ -380,12 +390,15 @@ static int mipi_renesas_lcd_on(struct platform_device *pdev)
 		mutex_lock(&renesas_state.lcd_mutex);	
 		mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_part1,
 				ARRAY_SIZE(renesas_part1));
-		mutex_unlock(&renesas_state.lcd_mutex);
+		//mutex_unlock(&renesas_state.lcd_mutex);
 
-		switch (renesas_state.test_control_flag) {
+#ifdef PANTECH_LCD_CHANGE_INVERSION
+		switch (renesas_state.inversion_type) {
 		case 0:  //default
+#endif
 			mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_1Column,
 					ARRAY_SIZE(renesas_1Column));
+#ifdef PANTECH_LCD_CHANGE_INVERSION
 			break;
 		case 1:
 			mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_1HDot,
@@ -412,13 +425,18 @@ static int mipi_renesas_lcd_on(struct platform_device *pdev)
 					ARRAY_SIZE(renesas_1Column));
 			break;
 		}
+#endif
 
-		mutex_lock(&renesas_state.lcd_mutex);	
+		//mutex_lock(&renesas_state.lcd_mutex);	
 		mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_part2,
 				ARRAY_SIZE(renesas_part2));
 		mutex_unlock(&renesas_state.lcd_mutex);
 
 		renesas_state.disp_initialized = true;
+#if defined(FEATURE_RENESAS_BL_ON_DEBUG)
+		gpio_set_value_cansleep(gpio_lcd_bl_en, GPIO_HIGH_VALUE);
+		gpio_set_value_cansleep(gpio_lcd_bl_ctl, GPIO_HIGH_VALUE);
+#endif 
 	}
 
 	mutex_lock(&renesas_state.lcd_mutex);
@@ -464,6 +482,10 @@ static int mipi_renesas_lcd_off(struct platform_device *pdev)
 		return -EINVAL;
 
 	if (renesas_state.disp_on == true) {
+#if defined(FEATURE_RENESAS_BL_ON_DEBUG)
+		gpio_set_value_cansleep(gpio_lcd_bl_ctl, GPIO_LOW_VALUE);
+		gpio_set_value_cansleep(gpio_lcd_bl_en, GPIO_LOW_VALUE);	
+#endif 
 		mutex_lock(&renesas_state.lcd_mutex);
     		mipi_set_tx_power_mode(0);
 
@@ -485,11 +507,10 @@ static int mipi_renesas_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
-#ifndef FEATURE_RENESAS_BL_CTRL_CHG 
+#if !(defined(FEATURE_RENESAS_BL_CTRL_CHG)||defined(FEATURE_RENESAS_BL_ON_DEBUG))|| defined(SKY_LCD_SINGLE_WIRE_LB_CON)
 static int first_enable = 0;
-#endif
 static int prev_bl_level = 0;
-//#endif
+#endif
 static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 {
 #ifdef SKY_LCD_SINGLE_WIRE_LB_CON
@@ -497,11 +518,6 @@ static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 	unsigned long flags;
 
 	PRINT("mipi_renesas_set_backlight bl_level = %d \n", mfd->bl_level);
-
-#ifdef CONFIG_F_SKYDISP_SKIP_BLSET_WITH_EFS_ERASE
-	mfd->bl_set_first_skip =0;
-#endif
-	
 #ifdef CONFIG_F_SKYDISP_SILENT_BOOT
     if(is_silent_boot_mode_n_bl_off == 1) {
         printk(KERN_ERR"DONOT set backlight because this time is silentboot mode.\n");
@@ -561,7 +577,7 @@ static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 #else	//SKY_LCD_SINGLE_WIRE_LB_CON
 	int bl_level;
 
-	PRINT("mipi_renesas_set_backlight prev_bl_level=%d, bl_level=%d\n", prev_bl_level, mfd->bl_level);
+	//PRINT("mipi_renesas_set_backlight cabc_data_val[2]=%d, bl_level=%d\n", cabc_data_val[2], mfd->bl_level);
 
 #ifdef CONFIG_F_SKYDISP_SILENT_BOOT
 		if(is_silent_boot_mode_n_bl_off == 1) {
@@ -588,7 +604,6 @@ static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 
 			mutex_lock(&renesas_state.lcd_mutex);
 			mipi_set_tx_power_mode(0);
-
 #ifdef FEATURE_RENESAS_CABC_BUG_FIX
 				mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_cabc_bugfix_NOP_set_cmds,
 					ARRAY_SIZE(renesas_cabc_bugfix_NOP_set_cmds));
@@ -598,6 +613,20 @@ static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 			mipi_set_tx_power_mode(1);
 			mutex_unlock(&renesas_state.lcd_mutex);
 		}
+#elif defined(FEATURE_RENESAS_BL_ON_DEBUG)
+		bl_level=mfd->bl_level;
+		cabc_data_val[2] = bl_table[bl_level];
+
+		PRINT("mipi_renesas_set_backlight cabcData[1] =%d  cabc_data_val[2] = %d\n",cabc_data_val[1],cabc_data_val[2]); 
+		mutex_lock(&renesas_state.lcd_mutex);
+		mipi_set_tx_power_mode(0);
+
+		msleep(1);
+
+		mipi_dsi_cmds_tx(&renesas_tx_buf, renesas_cabc_bl_set_cmds,
+				ARRAY_SIZE(renesas_cabc_bl_set_cmds));
+		mipi_set_tx_power_mode(1);
+		mutex_unlock(&renesas_state.lcd_mutex);
 #else
 	if (prev_bl_level != mfd->bl_level) {
 		bl_level=mfd->bl_level;
@@ -639,11 +668,13 @@ static void mipi_renesas_set_backlight(struct msm_fb_data_type *mfd)
 #endif	//SKY_LCD_SINGLE_WIRE_LB_CON
 }
 
+#ifdef CONFIG_F_SKYDISP_CE_TUNING_M2
 //shkwak 20120608, add for temp build
 void ce_control(struct msm_fb_data_type *mfd, int count)
 {
 	printk(KERN_ERR"[LCD] %s+, do nothing\n", __func__);
 }
+#endif
 
 #ifdef CONFIG_F_SKYDISP_CABC_CTRL
 void cabc_control(struct msm_fb_data_type *mfd, int state)
@@ -674,12 +705,6 @@ void cabc_control(struct msm_fb_data_type *mfd, int state)
 #endif
 }
 #endif
-
-void SKY_LCD_CE_CASE_SET(struct msm_fb_data_type *mfd, uint32_t CEcase)
-{
-	ENTER_FUNC2();
-	renesas_state.test_control_flag = CEcase;  	
-}
 
 #ifdef CONFIG_F_SKYDISP_SHARP_LCD_FLICKER
 extern void mipi_renesas_panel_power_shutdown(void);

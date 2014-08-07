@@ -1788,6 +1788,25 @@ int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info)
 		return -ENODEV;
 
 	cnt = 0;
+#ifdef PANTECH_LCD_PIPE_CLEAN_WHEN_FRAMEWORK_RESET
+	for (ndx = 0; ndx < OVERLAY_PIPE_MAX; ndx++) {
+		pipe = &ctrl->plist[ndx];
+		if (pipe == NULL)
+			continue;
+
+		if (!pipe->pipe_used)
+			continue;
+
+		info->z_order = pipe->mixer_stage - MDP4_MIXER_STAGE0;
+		/* z_order == -1, means base layer */
+		info->ptype = pipe->pipe_type;
+		info->pnum = pipe->pipe_num;
+		info->pndx = pipe->pipe_ndx;
+		info->mixer_num = pipe->mixer_num;
+		info++;
+		cnt++;
+	}
+#else
 	ndx = MDP4_MIXER_STAGE_BASE;
 	for ( ; ndx < MDP4_MIXER_STAGE_MAX; ndx++) {
 		pipe = &ctrl->plist[ndx];
@@ -1806,6 +1825,7 @@ int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info)
 		info++;
 		cnt++;
 	}
+#endif
 	return cnt;
 }
 

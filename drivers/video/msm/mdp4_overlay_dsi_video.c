@@ -750,6 +750,7 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	return ret;
 }
 
+#define PANTECH_LCD_BUG_FIX_FOR_ANDROID_RESTART
 int mdp4_dsi_video_off(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -815,6 +816,11 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 				vctrl->base_pipe->pipe_ndx, 1);
 		}
 	}
+#ifdef PANTECH_LCD_BUG_FIX_FOR_ANDROID_RESTART
+	if (vctrl->vsync_irq_enabled) {
+		mdp4_dsi_video_vsync_ctrl(mfd->fbi, 0);
+	}
+#endif
 
 	mdp4_dsi_video_tg_off(vctrl);
 

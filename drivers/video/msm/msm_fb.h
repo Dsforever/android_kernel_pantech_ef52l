@@ -289,9 +289,6 @@ struct msm_fb_data_type {
 	uint32 sec_mapped;
 	uint32 sec_active;
 	uint32 max_map_size;
-#ifdef CONFIG_F_SKYDISP_SKIP_BLSET_WITH_EFS_ERASE
-	int bl_set_first_skip;
-#endif	
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
