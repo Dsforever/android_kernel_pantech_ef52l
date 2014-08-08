@@ -1065,12 +1065,15 @@ struct msm_snapshot_pp_status {
 #define CFG_SET_AWB_LOCK 81//77
 #endif
 #if 1 //def F_PANTECH_CAMERA_FIX_CFG_FOCUS_MODE
-#define CFG_FOCUS_MODE 82
+#define CFG_FOCUS_MODE 82//78
 #endif
-#define CFG_MAX                         83
-
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+#define CFG_ESD_RESET		   83//79
+#define CFG_MAX                         84//80
 #else
-
+#define CFG_MAX                         83//79
+#endif
+#else
 #define CFG_MAX                       59
 
 #endif
@@ -1100,25 +1103,31 @@ struct msm_snapshot_pp_status {
 #define SENSOR_QVGA_SIZE		2
 #define SENSOR_INVALID_SIZE		3
 
-
+#ifdef CONFIG_PANTECH_CAMERA//need_to_check//wsyang_debug
 #define CAMERA_EFFECT_OFF		0
 #define CAMERA_EFFECT_MONO		1
 #define CAMERA_EFFECT_NEGATIVE		2
 #define CAMERA_EFFECT_SOLARIZE		3
 #define CAMERA_EFFECT_SEPIA		4
-#define CAMERA_EFFECT_POSTERIZE		5
+#define CAMERA_EFFECT_POSTERIZE         5
 #define CAMERA_EFFECT_WHITEBOARD	6
 #define CAMERA_EFFECT_BLACKBOARD	7
 #define CAMERA_EFFECT_AQUA		8
 #define CAMERA_EFFECT_EMBOSS		9
 #define CAMERA_EFFECT_SKETCH		10
 #define CAMERA_EFFECT_NEON		11
-#ifdef CONFIG_PANTECH_CAMERA
+#if 1//need_to_check//wsyang_debug //def CONFIG_PANTECH_CAMERA
 #define CAMERA_EFFECT_WHITEBOARD_C 12
 #define CAMERA_EFFECT_BLACKBOARD_C 13
-#define CAMERA_EFFECT_MAX 14
 #else
-#define CAMERA_EFFECT_MAX		12
+#define CAMERA_EFFECT_USER_DEFINED1     12
+#define CAMERA_EFFECT_USER_DEFINED2     13
+#endif
+#define CAMERA_EFFECT_USER_DEFINED3     14
+#define CAMERA_EFFECT_USER_DEFINED4     15
+#define CAMERA_EFFECT_USER_DEFINED5     16
+#define CAMERA_EFFECT_USER_DEFINED6     17
+#define CAMERA_EFFECT_MAX               18
 #endif
 
 /* QRD */
@@ -1314,6 +1323,9 @@ struct exp_gain_cfg {
 struct focus_cfg {
 	int32_t steps;
 	int dir;
+#ifdef CONFIG_PANTECH_CAMERA//def F_PANTECH_CAMERA_FIX_CFG_AF_RESURT
+    int8_t *af_result;
+#endif    
 };
 
 struct fps_cfg {
@@ -1381,7 +1393,7 @@ typedef struct
 #endif
 struct sensor_calib_data {
 	/* Color Related Measurements */
-#if 1//F_PANTECH_CAMERA_HWP //03_26_bsy	
+#ifdef CONFIG_PANTECH_CAMERA//F_PANTECH_CAMERA_HWP //03_26_bsy	
 	uint16_t r_over_g_5100K; //03_19_bsy 4100 cal add
 	uint16_t b_over_g_5100K; //03_19_bsy 4100 cal add
 	uint16_t gr_over_gb_5100K; //03_19_bsy 4100 cal add
@@ -1485,7 +1497,7 @@ struct cord {
 	uint32_t y;
 };
 
-#if 1 //def F_PANTECH_CAMERA_1080P_PREVIEW
+#ifdef CONFIG_PANTECH_CAMERA//def F_PANTECH_CAMERA_1080P_PREVIEW
 struct dimension_cfg {
 	uint16_t prev_dx;
 	uint16_t prev_dy;
@@ -1599,9 +1611,13 @@ struct csiphy_cfg_data {
 #define CSI_RAW8    0x2A
 #define CSI_RAW10   0x2B
 #define CSI_RAW12   0x2C
-#define CSI_YUV420_Y_8 0x30
+#ifdef CONFIG_PANTECH_CAMERA//#ifdef F_PANTECH_CAMERA_QPATCH_JPEG_ZSL
+#define CSI_JPEG 0x30//need_to_check
+#else
+#define CSI_YUV420_Y_8 0x30//need_to_check//wsyang_debug
 #define CSI_YUV420_UV_8 0x31
 #define CSI_YUV420_JM_8 0x32
+#endif
 
 #define CSI_DECODE_6BIT 0
 #define CSI_DECODE_8BIT 1
@@ -1772,8 +1788,12 @@ struct sensor_cfg_data {
 	int cfgtype;
 	int mode;
 	int rs;
-#ifdef CONFIG_PANTECH_CAMERA	
+#ifdef CONFIG_PANTECH_CAMERA
+#if 1//def F_PANTECH_CAMERA_ADD_CFG_ASD
+    int8_t frame_info[13];
+#else
 	int8_t frame_info[10];
+#endif
 #endif
 	uint8_t max_steps;
 

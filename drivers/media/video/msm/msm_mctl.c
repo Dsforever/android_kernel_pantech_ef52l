@@ -42,7 +42,6 @@
 #include "msm_camera_eeprom.h"
 #include "msm_csi_register.h"
 
-//#define CONFIG_MSM_CAMERA_DEBUG //psj_test
 #ifdef CONFIG_MSM_CAMERA_DEBUG
 #define D(fmt, args...) pr_debug("msm_mctl: " fmt, ##args)
 #else
@@ -489,12 +488,21 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 		break;
 			/* ISFIF config*/
 	case MSM_CAM_IOCTL_AXI_CONFIG:
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+		CDBG("%s: MSM_CAM_IOCTL_AXI_CONFIG - E\n", __func__);
+#endif
 		if (p_mctl->axi_sdev) {
 			v4l2_set_subdev_hostdata(p_mctl->axi_sdev, p_mctl);
 			rc = v4l2_subdev_call(p_mctl->axi_sdev, core, ioctl,
 				VIDIOC_MSM_AXI_CFG, (void __user *)arg);
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+			CDBG("%s: MSM_CAM_IOCTL_AXI_CONFIG - if\n", __func__);
+#endif
 		} else
 			rc = p_mctl->isp_config(p_mctl, cmd, arg);
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
+		CDBG("%s: MSM_CAM_IOCTL_AXI_CONFIG - X\n", __func__);
+#endif
 		break;
 	case MSM_CAM_IOCTL_ISPIF_IO_CFG:
 		rc = v4l2_subdev_call(p_mctl->ispif_sdev,
@@ -651,53 +659,55 @@ static void msm_mctl_release(struct msm_cam_media_controller *p_mctl)
 		(struct msm_camera_sensor_info *) s_ctrl->sensordata;
 	mutex_lock(&p_mctl->lock);
 	if (p_mctl->opencnt) {
+pr_err("[SD_check] %s/ VIDIOC_MSM_SENSOR_RELEASE",__func__);    	
 		v4l2_subdev_call(p_mctl->sensor_sdev, core, ioctl,
 			VIDIOC_MSM_SENSOR_RELEASE, NULL);
 
 		if (p_mctl->csic_sdev) {
+pr_err("[SD_check] %s/ VIDIOC_MSM_CSIC_RELEASE",__func__); 
 			v4l2_subdev_call(p_mctl->csic_sdev, core, ioctl,
 				VIDIOC_MSM_CSIC_RELEASE, NULL);
 		}
 
 		if (p_mctl->vpe_sdev) {
+pr_err("[SD_check] %s/ VIDIOC_MSM_VPE_RELEASE",__func__);
 			v4l2_subdev_call(p_mctl->vpe_sdev, core, ioctl,
 				VIDIOC_MSM_VPE_RELEASE, NULL);
 		}
 
 		if (p_mctl->axi_sdev) {
+pr_err("[SD_check] %s/ VIDIOC_MSM_AXI_RELEASE",__func__); 
 			v4l2_set_subdev_hostdata(p_mctl->axi_sdev, p_mctl);
 			v4l2_subdev_call(p_mctl->axi_sdev, core, ioctl,
 				VIDIOC_MSM_AXI_RELEASE, NULL);
 		}
 
 		if (p_mctl->csiphy_sdev) {
+pr_err("[SD_check] %s/ VIDIOC_MSM_CSIPHY_RELEASE",__func__);
 			v4l2_subdev_call(p_mctl->csiphy_sdev, core, ioctl,
 				VIDIOC_MSM_CSIPHY_RELEASE,
 				sinfo->sensor_platform_info->csi_lane_params);
 		}
 
-#ifndef CONFIG_PANTECH_CAMERA // Case:00871739 : bug fix csiphy reset - jjhwang 2012.06.25.    
 		if (p_mctl->csid_sdev) {
+pr_err("[SD_check] %s/ VIDIOC_MSM_CSID_RELEASE",__func__);
 			v4l2_subdev_call(p_mctl->csid_sdev, core, ioctl,
 				VIDIOC_MSM_CSID_RELEASE, NULL);
 		}
-#endif
-#ifdef CONFIG_PANTECH_CAMERA // Case:00871739 : bug fix csiphy reset - jjhwang 2012.06.25.
-	if (p_mctl->csid_sdev) {
-		v4l2_subdev_call(p_mctl->csid_sdev, core, ioctl,
-			VIDIOC_MSM_CSID_RELEASE, NULL);
-	}
-#endif
+
 		if (p_mctl->act_sdev) {
+pr_err("[SD_check] %s/ (p_mctl->act_sdev, core, s_power, 0)",__func__);  
 			v4l2_subdev_call(p_mctl->act_sdev, core, s_power, 0);
 			p_mctl->act_sdev = NULL;
 		}
 
+pr_err("[SD_check] %s/ (p_mctl->sensor_sdev, core, s_power, 0) ",__func__);
 		v4l2_subdev_call(p_mctl->sensor_sdev, core, s_power, 0);
 
+#if	1//def F_PANTECH_CAMERA_DEADBEEF_ERROR_FIX
 		v4l2_subdev_call(p_mctl->ispif_sdev,
 				core, ioctl, VIDIOC_MSM_ISPIF_REL, NULL);
-
+#endif
 		pm_qos_update_request(&p_mctl->pm_qos_req_list,
 					PM_QOS_DEFAULT_VALUE);
 		pm_qos_remove_request(&p_mctl->pm_qos_req_list);
@@ -993,7 +1003,7 @@ static int msm_mctl_dev_close(struct file *f)
 	    iounmap(pcam_inst->p_avtimer_lsw);
 	    iounmap(pcam_inst->p_avtimer_msw);
 	    //Turn OFF DSP/Enable power collapse
-	    //avcs_core_disable_power_collapse(0);
+	    avcs_core_disable_power_collapse(0);
 	    pcam_inst->avtimerOn = 0;
 	}
 
@@ -1111,9 +1121,9 @@ static int msm_mctl_v4l2_s_ctrl(struct file *f, void *pctx,
 		D("%s: mmap_inst=(0x%p, %d) AVTimer=%d\n",
 			 __func__, pcam_inst, pcam_inst->my_index, ctrl->value);
 		/*Kernel drivers to access AVTimer*/
-		//avcs_core_open();
+		avcs_core_open();
 		/*Turn ON DSP/Disable power collapse*/
-		//avcs_core_disable_power_collapse(1);
+		avcs_core_disable_power_collapse(1);
 		pcam_inst->p_avtimer_lsw = ioremap(AVTIMER_LSW_PHY_ADDR, 4);
 		pcam_inst->p_avtimer_msw = ioremap(AVTIMER_MSW_PHY_ADDR, 4);
 	} else
