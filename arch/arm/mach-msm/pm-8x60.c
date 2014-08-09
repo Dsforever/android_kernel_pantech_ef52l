@@ -22,6 +22,11 @@
 #include <linux/cpu.h>
 #include <linux/pm.h>
 #include <linux/pm_qos.h>
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#include <linux/proc_fs.h>
+#endif
+
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
@@ -57,11 +62,10 @@
 #include <mach/event_timer.h>
 #include <linux/cpu_pm.h>
 
-#if defined(CONFIG_PANTECH_DEBUG)
-#ifdef CONFIG_PANTECH_DEBUG_SCHED_LOG  //p14291_121102
-#include <mach/pantech_debug.h> 
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#include "smd_private.h"
 #endif
-#endif
+
 /******************************************************************************
  * Debug Definitions
  *****************************************************************************/
@@ -83,11 +87,6 @@ module_param_named(
 	debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
 static int msm_pm_retention_tz_call;
-#if defined(CONFIG_PANTECH_DEBUG) 
-#ifdef CONFIG_PANTECH_DEBUG_SCHED_LOG  //p14291_121102
-static int debug_power_collaspe_status[4] = {0};
-#endif
-#endif
 
 /******************************************************************************
  * Sleep Modes and Parameters
@@ -566,12 +565,6 @@ static bool __ref msm_pm_spm_power_collapse(
 #ifdef CONFIG_VFP
 	vfp_pm_suspend();
 #endif
-#if defined(CONFIG_PANTECH_DEBUG) 
-#ifdef CONFIG_PANTECH_DEBUG_SCHED_LOG  //p14291_121102
-	debug_power_collaspe_status[smp_processor_id()] = (from_idle<<8)|(notify_rpm<<4)|1;
-	pantechdbg_sched_msg("+pc(I:%d,R:%d)", from_idle, notify_rpm);
-#endif
-#endif
 	collapsed = msm_pm_l2x0_power_collapse();
 
 	msm_pm_boot_config_after_pc(cpu);
@@ -587,12 +580,7 @@ static bool __ref msm_pm_spm_power_collapse(
 		mb();
 		local_fiq_enable();
 	}
-#if defined(CONFIG_PANTECH_DEBUG) && !defined(CONFIG_PANTECH_USER_BUILD)
-#ifdef CONFIG_PANTECH_DEBUG_SCHED_LOG  //p14291_121102
-		pantechdbg_sched_msg("-pc(%d)", collapsed);
-		debug_power_collaspe_status[smp_processor_id()] = 0;
-#endif
-#endif
+
 	if (MSM_PM_DEBUG_POWER_COLLAPSE & msm_pm_debug_mask)
 		pr_info("CPU%u: %s: msm_pm_collapse returned, collapsed %d\n",
 			cpu, __func__, collapsed);
@@ -1129,6 +1117,68 @@ static struct platform_suspend_ops msm_pm_ops = {
 	.valid = suspend_valid_only_mem,
 };
 
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+static oem_pm_smem_vendor1_data_type *smem_id_vendor1_ptr;
+static uint32_t oem_prev_reset=0;
+
+static int oem_pm_read_proc_reset_info1
+	(char *page, char **start, off_t off, int count, int *eof, void *data)
+{
+	int len = 0;
+
+    smem_id_vendor1_ptr = (oem_pm_smem_vendor1_data_type*)smem_alloc(SMEM_ID_VENDOR1,
+                                                                     sizeof(oem_pm_smem_vendor1_data_type));
+
+  len  = sprintf(page, "Factory Cable Adc : 0x%x\n", smem_id_vendor1_ptr->factory_cable_adc);
+  len += sprintf(page + len, "Battery Id Adc: %d\n", smem_id_vendor1_ptr->battery_id_adc);
+  len += sprintf(page + len, "HW Revision Adc: %d\n", smem_id_vendor1_ptr->hw_rev_adc);
+  len += sprintf(page + len, "Power On Mode : %d\n", smem_id_vendor1_ptr->power_on_mode);
+  len += sprintf(page + len, "SilentBoot: %d\n", (smem_id_vendor1_ptr->silent_boot_mode ? 1 : 0 ) );
+  //len += sprintf(page + len, "SilentBoot: %d\n", smem_id_vendor1_ptr->silent_boot_mode );
+  len += sprintf(page + len, "HW Revision: %d\n", smem_id_vendor1_ptr->hw_rev);
+  len += sprintf(page + len, "Battery Id: %d\n", smem_id_vendor1_ptr->battery_id);
+  len += sprintf(page + len, "Backlight Off: %d\n", (smem_id_vendor1_ptr->backlight_off ? 1 : 0 ) );
+//  len += sprintf(page + len, "Backlight Off: %d\n", smem_id_vendor1_ptr->backlight_off);
+  len += sprintf(page + len, "Reset: %d\n", oem_prev_reset);
+
+  printk(KERN_INFO "Factory Cable Adc : 0x%x\n", smem_id_vendor1_ptr->factory_cable_adc);
+  printk(KERN_INFO "Battery Id Adc: %d\n", smem_id_vendor1_ptr->battery_id_adc);
+  printk(KERN_INFO "HW Revision Adc: %d\n", smem_id_vendor1_ptr->hw_rev_adc);
+  printk(KERN_INFO "Power On Mode : %d\n", smem_id_vendor1_ptr->power_on_mode);
+  printk(KERN_INFO "SilentBoot: %d\n", (smem_id_vendor1_ptr->silent_boot_mode ? 1 : 0 ) );
+//  printk(KERN_INFO "SilentBoot: %d\n", smem_id_vendor1_ptr->silent_boot_mode);
+  printk(KERN_INFO "HW Revision: %d\n", smem_id_vendor1_ptr->hw_rev);
+  printk(KERN_INFO "Battery Id: %d\n", smem_id_vendor1_ptr->battery_id);
+  printk(KERN_INFO "Backlight Off: %d\n", (smem_id_vendor1_ptr->backlight_off ? 1 : 0 ) );
+//  printk(KERN_INFO "Backlight Off: %d\n", smem_id_vendor1_ptr->backlight_off );
+  printk(KERN_INFO "Reset: %d\n", oem_prev_reset);
+  
+  return len;
+}
+
+int oem_pm_write_proc_reset_info1
+  (struct file *file, const char *buffer, unsigned long count, void *data)
+{
+	int len;
+	char tbuffer[2];
+
+	if(count > 1 )
+		len = 1;
+	
+	memset(tbuffer, 0x00, 2);
+
+	if(copy_from_user(tbuffer, buffer, len))
+		return -EFAULT;
+	
+	tbuffer[len] = '\0';
+
+	if(tbuffer[0] >= '0' && tbuffer[0] <= '9')
+		oem_prev_reset = tbuffer[0] - '0';
+
+	return len;
+}
+#endif
+
 /******************************************************************************
  * Initialization routine
  *****************************************************************************/
@@ -1322,6 +1372,10 @@ core_initcall(msm_pm_setup_saved_state);
 static int __init msm_pm_init(void)
 {
 	int rc;
+	
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+  struct proc_dir_entry *oem_pm_power_on_info;
+#endif
 
 	enum msm_pm_time_stats_id enable_stats[] = {
 		MSM_PM_STAT_IDLE_WFI,
@@ -1330,6 +1384,16 @@ static int __init msm_pm_init(void)
 		MSM_PM_STAT_IDLE_POWER_COLLAPSE,
 		MSM_PM_STAT_SUSPEND,
 	};
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+  oem_pm_power_on_info = create_proc_entry("pantech_resetinfo", S_IRUGO | S_IWUSR | S_IWGRP, NULL);
+
+	if (oem_pm_power_on_info) {
+		oem_pm_power_on_info->read_proc  = oem_pm_read_proc_reset_info1;
+		oem_pm_power_on_info->write_proc = oem_pm_write_proc_reset_info1;
+		oem_pm_power_on_info->data       = NULL;
+	}
+#endif
 
 	msm_pm_mode_sysfs_add();
 	msm_pm_add_stats(enable_stats, ARRAY_SIZE(enable_stats));
