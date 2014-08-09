@@ -35,7 +35,7 @@
 #include "msm_watchdog.h"
 #include "timer.h"
 #ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
-#include <mach/pantech_sys.h>
+#include "sky_sys_reset.h"
 #endif
 
 #define WDT0_RST	0x38
@@ -62,6 +62,13 @@ void *restart_reason;
 
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
+
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+#define NORMAL_RESET_MAGIC_NUM 0xbaabcddc
+int sky_reset_reason=SYS_RESET_REASON_UNKNOWN;
+#endif
+
 
 #ifdef CONFIG_MSM_DLOAD_MODE
 static int in_panic;
@@ -138,6 +145,9 @@ EXPORT_SYMBOL(msm_set_restart_mode);
 static void __msm_power_off(int lower_pshold)
 {
 	printk(KERN_CRIT "Powering off the SoC\n");
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	sky_sys_rst_set_reboot_info(0);
+#endif
 #ifdef CONFIG_MSM_DLOAD_MODE
 	set_dload_mode(0);
 #endif
@@ -263,6 +273,10 @@ void msm_restart(char mode, const char *cmd)
 	printk(KERN_NOTICE "Going down for restart now\n");
 
 	pm8xxx_reset_pwr_off(1);
+	
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+    sky_sys_rst_set_reboot_info(SYS_RESET_REASON_NORMAL);
+#endif
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
@@ -271,20 +285,21 @@ void msm_restart(char mode, const char *cmd)
 			__raw_writel(0x77665502, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
+			printk(KERN_NOTICE "<jenky> oem  restart now\n");
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
 			__raw_writel(0x6f656d00 | code, restart_reason);
-#ifdef CONFIG_PANTECH_FS_AUTO_REPAIR 
-		/* added for ext4 auto repair */
-		} else if (!strncmp(cmd, "autorepair", 10)){
-			__raw_writel(0xDA000012, restart_reason);
-		} else if (!strncmp(cmd, "data_mount_err", 14)){
-			pantech_sys_reset_reason_set(SYS_RESET_REASON_DATA_MOUNT_ERR);
-			panic("EXT4-fs : data partition mount failed. going to run e2fsck\n");
-#endif
 		} else {
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+            if(in_panic)
+                sky_sys_rst_set_reboot_info(sky_reset_reason);
+#endif
 			__raw_writel(0x77665501, restart_reason);
 		}
 	} else {
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+            if(in_panic)
+                sky_sys_rst_set_reboot_info(sky_reset_reason);
+#endif
 		__raw_writel(0x77665501, restart_reason);
 	}
 #ifdef CONFIG_LGE_CRASH_HANDLER
@@ -292,10 +307,6 @@ void msm_restart(char mode, const char *cmd)
 		set_kernel_crash_magic_number();
 reset:
 #endif /* CONFIG_LGE_CRASH_HANDLER */
-
-#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
-	pantech_sys_reset_reason_set(SYS_RESET_REASON_NORMAL);
-#endif
 
 	__raw_writel(0, msm_tmr0_base + WDT0_EN);
 	if (!(machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa())) {
@@ -317,6 +328,10 @@ reset:
 static int __init msm_pmic_restart_init(void)
 {
 	int rc;
+
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	sky_sys_rst_init_reboot_info();
+#endif
 
 	if (pmic_reset_irq != 0) {
 		rc = request_any_context_irq(pmic_reset_irq,
@@ -348,10 +363,6 @@ static int __init msm_restart_init(void)
 #endif
 	set_dload_mode(download_mode);
 #endif
-#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
-	pantech_sys_reset_reason_init();
-#endif
-
 	msm_tmr0_base = msm_timer_get_timer0_base();
 	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
 	pm_power_off = msm_power_off;
